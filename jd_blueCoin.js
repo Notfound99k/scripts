@@ -1,7 +1,7 @@
 /*
 京小超兑换奖品 脚本地址：https://raw.githubusercontent.com/lxk0301/jd_scripts/master/jd_blueCoin.js
 感谢@yangtingxiao提供PR
-更新时间：2020-11-23
+更新时间：2020-12-24
 支持京东多个账号
 脚本兼容: QuantumultX, Surge, Loon, JSBox, Node.js
 ======================quantumultx===============
@@ -34,12 +34,13 @@ if ($.isNode()) {
   cookiesArr.reverse();
   cookiesArr.push(...[$.getdata('CookieJD2'), $.getdata('CookieJD')]);
   cookiesArr.reverse();
+  cookiesArr = cookiesArr.filter(item => item !== "" && item !== null && item !== undefined);
 }
 
 const JD_API_HOST = `https://api.m.jd.com/api?appid=jdsupermarket`;
 !(async () => {
   if (!cookiesArr[0]) {
-    $.msg($.name, '【提示】请先获取cookie\n直接使用NobyDa的京东签到获取', 'https://bean.m.jd.com/', {"open-url": "https://bean.m.jd.com/"});
+    $.msg($.name, '【提示】请先获取cookie\n直接使用NobyDa的京东签到获取', 'https://bean.m.jd.com/bean/signIndex.action', {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
     return;
   }
   for (let i =0; i < cookiesArr.length; i++) {
@@ -61,12 +62,10 @@ const JD_API_HOST = `https://api.m.jd.com/api?appid=jdsupermarket`;
       console.log(`\n开始【京东账号${$.index}】${$.nickName || $.UserName}\n`);
       console.log(`目前暂无兑换酒类的奖品功能，即使输入酒类名称，脚本也会提示下架\n`)
       if (!$.isLogin) {
-        $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/`, {"open-url": "https://bean.m.jd.com/"});
+        $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/bean/signIndex.action`, {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
 
         if ($.isNode()) {
           await notify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
-        } else {
-          $.setdata('', `CookieJD${i ? i + 1 : "" }`);//cookie失效，故清空cookie。$.setdata('', `CookieJD${i ? i + 1 : "" }`);//cookie失效，故清空cookie。
         }
         continue
       }
@@ -94,7 +93,7 @@ async function PrizeIndex() {
   // const prizeList = [...$.queryPrizeData, ...$.materialPrizeIndex];
   const prizeList = [...$.queryPrizeData];
   if (`${coinToBeans}` === '1000') {
-    if (prizeList[1].beanType === 'BeanPackage') {
+    if (prizeList[1] && prizeList[1].beanType === 'BeanPackage') {
       console.log(`查询换${prizeList[1].title}ID成功，ID:${prizeList[1].prizeId}`)
       $.title = prizeList[1].title;
       $.blueCost = prizeList[1].blueCost;
@@ -103,11 +102,11 @@ async function PrizeIndex() {
       $.beanerr = `东哥今天不给换`;
       return ;
     }
-    if (prizeList[1].inStock === 506) {
+    if (prizeList[1] && prizeList[1].inStock === 506) {
       $.beanerr = `失败，1000京豆领光了，请明天再来`;
       return ;
     }
-    if (prizeList[1].targetNum === prizeList[1].finishNum) {
+    if (prizeList[1] && prizeList[1].targetNum === prizeList[1] && prizeList[1].finishNum) {
       $.beanerr = `${prizeList[1].subTitle}`;
       return ;
     }
@@ -119,7 +118,7 @@ async function PrizeIndex() {
       $.beanerr = `兑换失败,您目前蓝币${$.totalBlue}个,不足以兑换${$.title}所需的${$.blueCost}个`;
     }
   } else if (`${coinToBeans}` === '20') {
-    if (prizeList[0].beanType === 'Bean') {
+    if (prizeList[0] && prizeList[0].beanType === 'Bean') {
       console.log(`查询换${prizeList[0].title}ID成功，ID:${prizeList[0].prizeId}`)
       $.title = prizeList[0].title;
       $.blueCost = prizeList[0].blueCost;
@@ -128,12 +127,12 @@ async function PrizeIndex() {
       $.beanerr = `东哥今天不给换`;
       return ;
     }
-    if (prizeList[0].inStock === 506) {
+    if (prizeList[0] && prizeList[0].inStock === 506) {
       console.log(`失败，万能的京豆领光了，请明天再来`);
       $.beanerr = `失败，万能的京豆领光了，请明天再来`;
       return ;
     }
-    if (prizeList[0].targetNum === prizeList[0].finishNum) {
+    if ((prizeList[0] && prizeList[0].targetNum) === (prizeList[0] && prizeList[0].finishNum)) {
       $.beanerr = `${prizeList[0].subTitle}`;
       return ;
     }
@@ -337,24 +336,27 @@ function smtgHome() {
 }
 
 //通知
-async function msgShow() {
+function msgShow() {
   // $.msg($.name, ``, `【京东账号${$.index}】${$.nickName}\n【收取蓝币】${$.coincount ? `${$.coincount}个` : $.coinerr }${coinToBeans ? `\n【兑换京豆】${ $.beanscount ? `${$.beanscount}个` : $.beanerr}` : ""}`);
-  $.log(`\n【京东账号${$.index}】${$.nickName}\n${coinToBeans ? `【兑换${$.title}】${$.beanscount ? `成功` : $.beanerr}` : "您设置的是不兑换奖品"}\n`);
-  let ctrTemp;
-  if ($.isNode() && process.env.MARKET_REWARD_NOTIFY) {
-    ctrTemp = `${process.env.MARKET_REWARD_NOTIFY}` === 'false';
-  } else if ($.getdata('jdSuperMarketRewardNotify')) {
-    ctrTemp = $.getdata('jdSuperMarketRewardNotify') === 'false';
-  } else {
-    ctrTemp = `${jdNotify}` === 'false';
-  }
-  //默认只在兑换奖品成功后弹窗提醒。情况情况加，只打印日志，不弹窗
-  if ($.beanscount && ctrTemp) {
-    $.msg($.name, ``, `【京东账号${$.index}】${$.nickName}\n${coinToBeans ? `【兑换${$.title}】${ $.beanscount ? `成功，数量：${$.beanscount}个` : $.beanerr}` : "您设置的是不兑换奖品"}`);
-    if ($.isNode()) {
-      await notify.sendNotify(`${$.name} - 账号${$.index} - ${$.nickName}`, `【京东账号${$.index}】${$.UserName}\n${coinToBeans ? `【兑换${$.title}】${$.beanscount ? `成功，数量：${$.beanscount}个` : $.beanerr}` : "您设置的是不兑换奖品"}`)
+  return new Promise(async resolve => {
+    $.log(`\n【京东账号${$.index}】${$.nickName}\n${coinToBeans ? `【兑换${$.title}】${$.beanscount ? `成功` : $.beanerr}` : "您设置的是不兑换奖品"}\n`);
+    let ctrTemp;
+    if ($.isNode() && process.env.MARKET_REWARD_NOTIFY) {
+      ctrTemp = `${process.env.MARKET_REWARD_NOTIFY}` === 'false';
+    } else if ($.getdata('jdSuperMarketRewardNotify')) {
+      ctrTemp = $.getdata('jdSuperMarketRewardNotify') === 'false';
+    } else {
+      ctrTemp = `${jdNotify}` === 'false';
     }
-  }
+    //默认只在兑换奖品成功后弹窗提醒。情况情况加，只打印日志，不弹窗
+    if ($.beanscount && ctrTemp) {
+      $.msg($.name, ``, `【京东账号${$.index}】${$.nickName}\n${coinToBeans ? `【兑换${$.title}】${ $.beanscount ? `成功，数量：${$.beanscount}个` : $.beanerr}` : "您设置的是不兑换奖品"}`);
+      if ($.isNode()) {
+        await notify.sendNotify(`${$.name} - 账号${$.index} - ${$.nickName}`, `【京东账号${$.index}】${$.UserName}\n${coinToBeans ? `【兑换${$.title}】${$.beanscount ? `成功，数量：${$.beanscount}个` : $.beanerr}` : "您设置的是不兑换奖品"}`)
+      }
+    }
+    resolve()
+  })
 }
 function TotalBean() {
   return new Promise(async resolve => {
@@ -368,7 +370,7 @@ function TotalBean() {
         "Connection": "keep-alive",
         "Cookie": cookie,
         "Referer": "https://wqs.jd.com/my/jingdou/my.shtml?sceneval=2",
-        "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0") : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0")
+        "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0")
       }
     }
     $.post(options, (err, resp, data) => {
@@ -411,7 +413,7 @@ function taskUrl(function_id, body = {}) {
   return {
     url: `${JD_API_HOST}&functionId=${function_id}&clientVersion=8.0.0&client=m&body=${escape(JSON.stringify(body))}&t=${Date.now()}`,
     headers: {
-      'User-Agent': $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0") : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0"),
+      'User-Agent': $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0"),
       'Host': 'api.m.jd.com',
       'Cookie': cookie,
       'Referer': 'https://jdsupermarket.jd.com/game',
@@ -425,7 +427,7 @@ function jsonParse(str) {
       return JSON.parse(str);
     } catch (e) {
       console.log(e);
-      $.msg($.name, '', '不要在BoxJS手动复制粘贴修改cookie')
+      $.msg($.name, '', '请勿随意在BoxJs输入框修改内容\n建议通过脚本去获取cookie')
       return [];
     }
   }
